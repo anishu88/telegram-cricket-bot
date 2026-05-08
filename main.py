@@ -1,3 +1,5 @@
+import requests
+import time
 
 # ================= CONFIG =================
 BOT_TOKEN = "8791230210:AAGGBf2fzHWI4B8aECe4eeelntIj8N9pEy4"
@@ -13,7 +15,7 @@ def send(msg):
     except:
         pass
 
-# ================= GET LIVE MATCHES =================
+# ================= LIVE MATCHES =================
 def get_matches():
     url = "https://hs-consumer-api.espncricinfo.com/v1/pages/matches/current?lang=en&latest=true"
     try:
@@ -24,15 +26,13 @@ def get_matches():
 # ================= MATCH IDS =================
 def get_match_ids(data):
     ids = []
-
     try:
         matches = data.get("content", {}).get("matches", [])
         for m in matches:
             ids.append(m.get("objectId"))
     except:
         pass
-
-    return ids[:2]  # top 2 matches
+    return ids[:2]
 
 # ================= COMMENTARY =================
 def get_commentary(mid):
@@ -52,10 +52,10 @@ def parse_balls(data):
         for over in comm:
             for c in over.get("commentary", []):
                 text = c.get("text", "")
-                time_stamp = c.get("timestamp", "")
+                ts = c.get("timestamp", "")
 
                 if text:
-                    ball_id = f"{time_stamp}-{text}"
+                    ball_id = f"{ts}-{text}"
                     balls.append((ball_id, text))
 
     except:
@@ -63,8 +63,8 @@ def parse_balls(data):
 
     return balls
 
-# ================= MAIN =================
-send("🏏 BALL-BY-BALL BOT STARTED (ESPN LIVE COMMENTARY) 🚀")
+# ================= START BOT =================
+send("🏏 BALL-BY-BALL BOT STARTED (FIXED VERSION) 🚀")
 
 while True:
 
@@ -92,9 +92,7 @@ while True:
 
                     sent.add(bid)
 
-                    msg = f"🏏 BALL UPDATE\n\n{text}"
-
-                    send(msg)
+                    send(f"🏏 BALL UPDATE\n\n{text}")
 
         time.sleep(8)
 
