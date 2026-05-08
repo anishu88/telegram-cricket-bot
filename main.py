@@ -42,6 +42,7 @@ while True:
             if message != last_message:
                 send_message(message)
                 last_message = message
+                send_message("Bot Working ✅")
 
         time.sleep(60)
 
