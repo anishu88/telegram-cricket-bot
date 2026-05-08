@@ -7,7 +7,7 @@ CHANNEL_ID = "@daddyscricketline"
 RAPID_API_KEY = "3feaa2c6e0mshb44e29d5d69fc27p109f2fjsne898ba876593"
 
 headers = {
-    "x-rapidapi-host": "cricbuzz-cricket.p.rapidapi.com",
+    "x-rapidapi-host": "cricbuzz-cricket2.p.rapidapi.com",
     "x-rapidapi-key": RAPID_API_KEY
 }
 
