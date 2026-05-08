@@ -1,73 +1,76 @@
 import requests
 import time
+import os
 
-BOT_TOKEN = "8791230210:AAH3h1EgwJFCFA7k1lEW_tkFxDeZ9r2_MaM"
-CHANNEL_ID = "@daddyscricketline"
+BOT_TOKEN = os.getenv("8791230210:AAH3h1EgwJFCFA7k1lEW_tkFxDeZ9r2_MaM")
+CHANNEL_ID = os.getenv("@daddyscricketline")
 
-RAPID_API_KEY = "3feaa2c6e0mshb44e29d5d69fc27p109f2fjsne898ba876593Y"
+sent = set()
 
-headers = {
-    "x-rapidapi-host": "cricbuzz-cricket.p.rapidapi.com",
-    "x-rapidapi-key": RAPID_API_KEY
-}
+def send(msg):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    requests.post(url, data={"chat_id": CHANNEL_ID, "text": msg})
 
-def send_message(msg):
+# ================= MATCH LIST =================
+def get_matches():
+    url = "https://hs-consumer-api.espncricinfo.com/v1/pages/matches/current?lang=en&latest=true"
+    return requests.get(url).json()
 
-    telegram_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+# ================= SCORE DETAILS (IMPORTANT FIX) =================
+def get_score(mid):
+    url = f"https://hs-consumer-api.espncricinfo.com/v1/pages/match/details?lang=en&matchId={mid}"
+    return requests.get(url).json()
 
-    data = {
-        "chat_id": CHANNEL_ID,
-        "text": msg
-    }
+# ================= PARSE SCORE =================
+def parse_score(data):
+    try:
+        match = data.get("content", {}).get("match", {})
 
-    requests.post(telegram_url, data=data)
+        teams = match.get("teams", [])
+        status = match.get("status", "LIVE")
 
-last_message = ""
+        score_text = ""
 
-send_message("🏏 Cricbuzz Live Bot Started ✅")
+        for t in match.get("innings", []):
+            team = t.get("team", {}).get("name", "")
+            runs = t.get("runs", 0)
+            wickets = t.get("wickets", 0)
+            overs = t.get("overs", 0)
+
+            score_text += f"{team}: {runs}/{wickets} ({overs})\n"
+
+        name = " vs ".join([t.get("name","") for t in teams])
+
+        return f"🏏 {name}\n\n{score_text}\n📌 {status}"
+
+    except:
+        return None
+
+# ================= MAIN =================
+send("🏏 SCORE BOT STARTED 🚀")
 
 while True:
-
     try:
+        data = get_matches()
+        matches = data.get("content", {}).get("matches", [])
 
-        api_url = "https://cricbuzz-cricket.p.rapidapi.com/matches/v1/live"
+        for m in matches:
+            mid = m.get("objectId")
 
-        response = requests.get(api_url, headers=headers)
+            if not mid:
+                continue
 
-        data = response.json()
+            if mid not in sent:
 
-        message = "🏏 LIVE CRICKET SCORES\n\n"
+                score_data = get_score(mid)
+                msg = parse_score(score_data)
 
-        for match_type in data["typeMatches"]:
+                if msg:
+                    sent.add(mid)
+                    send(msg)
 
-            for series in match_type["seriesMatches"]:
-
-                if "seriesAdWrapper" in series:
-
-                    matches = series["seriesAdWrapper"]["matches"]
-
-                    for match in matches[:2]:
-
-                        info = match["matchInfo"]
-
-                        team1 = info["team1"]["teamName"]
-                        team2 = info["team2"]["teamName"]
-
-                        status = info["status"]
-
-                        message += f"{team1} vs {team2}\n"
-                        message += f"{status}\n\n"
-
-        if message != last_message:
-
-            send_message(message)
-
-            last_message = message
-
-        time.sleep(120)
+        time.sleep(10)
 
     except Exception as e:
-
-        print(e)
-
-        time.sleep(120)
+        print("error:", e)
+        time.sleep(10)
