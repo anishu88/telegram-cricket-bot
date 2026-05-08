@@ -3,7 +3,6 @@ import time
 
 BOT_TOKEN = "8791230210:AAH3h1EgwJFCFA7k1lEW_tkFxDeZ9r2_MaM"
 CHANNEL_ID = "@daddyscricketline"
-
 RAPID_API_KEY = "3feaa2c6e0mshb44e29d5d69fc27p109f2fjsne898ba876593"
 
 headers = {
@@ -12,26 +11,39 @@ headers = {
 }
 
 def send_message(msg):
-    telegram_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    try:
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        requests.post(url, data={"chat_id": CHANNEL_ID, "text": msg})
+    except:
+        pass
 
-    data = {
-        "chat_id": CHANNEL_ID,
-        "text": msg
-    }
+# ⚠️ IMPORTANT: send only once
+bot_started = False
 
-    requests.post(telegram_url, data=data)
-
-# store last MATCH STATUS instead of full message
 last_status_map = {}
-
-send_message("🏏 Cricbuzz Live Bot Started ✅")
 
 while True:
     try:
+        if not bot_started:
+            send_message("🏏 Cricbuzz Live Bot Started ✅")
+            bot_started = True
+
         api_url = "https://cricbuzz-cricket.p.rapidapi.com/matches/v1/live"
 
-        response = requests.get(api_url, headers=headers)
+        response = requests.get(api_url, headers=headers, timeout=10)
+
+        # 🚨 check response
+        if response.status_code != 200:
+            print("API ERROR:", response.text)
+            time.sleep(30)
+            continue
+
         data = response.json()
+
+        if "typeMatches" not in data:
+            print("Invalid response structure")
+            time.sleep(30)
+            continue
 
         for match_type in data.get("typeMatches", []):
 
@@ -51,10 +63,11 @@ while True:
                     team2 = info.get("team2", {}).get("teamName", "")
                     status = info.get("status", "")
 
-                    # NEW KEY: only send if status changed
-                    old_status = last_status_map.get(match_id)
+                    if not match_id:
+                        continue
 
-                    if status != old_status:
+                    # only send if changed
+                    if last_status_map.get(match_id) != status:
 
                         msg = f"""🏏 LIVE UPDATE
 
@@ -66,7 +79,7 @@ while True:
 
                         last_status_map[match_id] = status
 
-        time.sleep(30)  # faster updates (ball-by-ball feel)
+        time.sleep(30)
 
     except Exception as e:
         print("ERROR:", e)
