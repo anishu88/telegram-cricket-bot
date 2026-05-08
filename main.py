@@ -1,52 +1,15 @@
 import requests
-import time
 
-BOT_TOKEN = "8791230210:AAFQ-XS_l0451m0awhBGvsjiEK54mDWRLLw
-"
+BOT_TOKEN = "8791230210:AAGGBf2fzHWI4B8aECe4eeelntIj8N9pEy4"
 CHANNEL_ID = "@daddyscricketline"
 
-def send_message(msg):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    
-    data = {
-        "chat_id": CHANNEL_ID,
-        "text": msg
-    }
+url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
 
-    requests.post(url, data=data)
+data = {
+    "chat_id": CHANNEL_ID,
+    "text": "Bot Started Successfully ✅"
+}
 
-last_message = ""
+requests.post(url, data=data)
 
-while True:
-    try:
-        api = "https://api.cricapi.com/v1/currentMatches?apikey=demo&offset=0"
-        
-        response = requests.get(api).json()
-
-        if "data" in response:
-
-            match = response["data"][0]
-
-            teams = " vs ".join(match["teams"])
-
-            score_text = ""
-
-            if "score" in match:
-
-                for s in match["score"]:
-
-                    score_text += f"{s['inning']} - {s['r']}/{s['w']} ({s['o']} ov)\n"
-
-            message = f"🏏 LIVE SCORE UPDATE\n\n{teams}\n\n{score_text}"
-
-
-            if message != last_message:
-                send_message(message)
-                last_message = message
-                send_message("Bot Working ✅")
-
-        time.sleep(60)
-
-    except Exception as e:
-        print(e)
-        time.sleep(60)
+print("done")
