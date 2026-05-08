@@ -38,7 +38,6 @@ while True:
 
             message = f"🏏 LIVE SCORE UPDATE\n\n{teams}\n\n{score_text}"
 
-            global last_message
 
             if message != last_message:
                 send_message(message)
