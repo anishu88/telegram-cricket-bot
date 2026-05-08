@@ -1,8 +1,8 @@
 import requests
 import time
 
-BOT_TOKEN = "8791230210:AAGHr_mGA03UJPsxmPX8T7VQIZ8NdQpM560"
-CHANNEL_ID = "@bpnB2V8M3ODM1"
+BOT_TOKEN = "8791230210:AAGXgdlYK44KCnewt-MitK5b6DXi6jemr1o"
+CHANNEL_ID = "@daddyscricketline"
 
 def send_message(msg):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
