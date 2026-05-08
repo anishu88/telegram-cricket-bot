@@ -1,7 +1,8 @@
 import requests
 import time
 
-BOT_TOKEN = "8791230210:AAGXgdlYK44KCnewt-MitK5b6DXi6jemr1o"
+BOT_TOKEN = "8791230210:AAFQ-XS_l0451m0awhBGvsjiEK54mDWRLLw
+"
 CHANNEL_ID = "@daddyscricketline"
 
 def send_message(msg):
