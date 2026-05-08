@@ -1,21 +1,25 @@
-import requests
+mport requests
 import time
+import os
 
-# ================= CONFIG =================
-BOT_TOKEN = "8791230210:AAGGBf2fzHWI4B8aECe4eeelntIj8N9pEy4"
-CHANNEL_ID = "@daddyscricketline"
+BOT_TOKEN = os.getenv("8791230210:AAGGBf2fzHWI4B8aECe4eeelntIj8N9pEy4")
+CHANNEL_ID = os.getenv("@daddyscricketline")
 
 sent = set()
 
 # ================= TELEGRAM =================
 def send(msg):
+    if not BOT_TOKEN or not CHANNEL_ID:
+        print("Missing env variables")
+        return
+
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     try:
         requests.post(url, data={"chat_id": CHANNEL_ID, "text": msg})
-    except:
-        pass
+    except Exception as e:
+        print("Telegram error:", e)
 
-# ================= LIVE MATCHES =================
+# ================= ESPN LIVE DATA =================
 def get_matches():
     url = "https://hs-consumer-api.espncricinfo.com/v1/pages/matches/current?lang=en&latest=true"
     try:
@@ -23,79 +27,48 @@ def get_matches():
     except:
         return None
 
-# ================= MATCH IDS =================
-def get_match_ids(data):
-    ids = []
+# ================= PARSE MATCHES =================
+def parse_matches(data):
+    results = []
+
+    if not data:
+        return results
+
     try:
         matches = data.get("content", {}).get("matches", [])
+
         for m in matches:
-            ids.append(m.get("objectId"))
-    except:
-        pass
-    return ids[:2]
+            mid = str(m.get("objectId"))
+            name = m.get("slug", "Match")
+            status = m.get("status", "LIVE")
 
-# ================= COMMENTARY =================
-def get_commentary(mid):
-    url = f"https://hs-consumer-api.espncricinfo.com/v1/pages/match/details?lang=en&matchId={mid}"
-    try:
-        return requests.get(url, timeout=10).json()
-    except:
-        return None
+            msg = f"🏏 {name}\n📌 {status}"
+            results.append((mid, msg))
 
-# ================= PARSE BALLS =================
-def parse_balls(data):
-    balls = []
+    except Exception as e:
+        print("parse error:", e)
 
-    try:
-        comm = data.get("content", {}).get("commentary", [])
+    return results
 
-        for over in comm:
-            for c in over.get("commentary", []):
-                text = c.get("text", "")
-                ts = c.get("timestamp", "")
+# ================= START =================
+print("BOT STARTING...")
 
-                if text:
-                    ball_id = f"{ts}-{text}"
-                    balls.append((ball_id, text))
-
-    except:
-        pass
-
-    return balls
-
-# ================= START BOT =================
-send("🏏 BALL-BY-BALL BOT STARTED (FIXED VERSION) 🚀")
+send("🏏 Cricket Bot Started Successfully 🚀")
 
 while True:
 
     try:
         data = get_matches()
+        matches = parse_matches(data)
 
-        if not data:
-            time.sleep(10)
-            continue
+        for mid, msg in matches:
 
-        match_ids = get_match_ids(data)
+            if mid not in sent:
+                sent.add(mid)
+                send(msg)
 
-        for mid in match_ids:
-
-            comm = get_commentary(mid)
-
-            if not comm:
-                continue
-
-            balls = parse_balls(comm)
-
-            for bid, text in balls:
-
-                if bid not in sent:
-
-                    sent.add(bid)
-
-                    send(f"🏏 BALL UPDATE\n\n{text}")
-
-        time.sleep(8)
+        time.sleep(10)
 
     except Exception as e:
-        print("error:", e)
+        print("loop error:", e)
         time.sleep(10)
