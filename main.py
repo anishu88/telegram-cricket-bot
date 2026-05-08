@@ -2,6 +2,7 @@ import requests
 import time
 import sqlite3
 
+# ================= CONFIG =================
 BOT_TOKEN = "8791230210:AAGGBf2fzHWI4B8aECe4eeelntIj8N9pEy4"
 CHANNEL_ID = "@daddyscricketline"
 
@@ -12,95 +13,96 @@ headers = {
     "x-rapidapi-key": RAPID_API_KEY
 }
 
-conn = sqlite3.connect("ballbot.db", check_same_thread=False)
+# ================= DB (NO DUPLICATES) =================
+conn = sqlite3.connect("cricket_bot.db", check_same_thread=False)
 cur = conn.cursor()
 
-cur.execute("CREATE TABLE IF NOT EXISTS sent (id TEXT PRIMARY KEY)")
+cur.execute("""
+CREATE TABLE IF NOT EXISTS sent (
+    id TEXT PRIMARY KEY
+)
+""")
 conn.commit()
 
-
-def send(msg):
+# ================= TELEGRAM =================
+def send_message(msg):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    requests.post(url, data={"chat_id": CHANNEL_ID, "text": msg})
+    requests.post(url, data={
+        "chat_id": CHANNEL_ID,
+        "text": msg
+    })
 
-
+# ================= LIVE MATCH API =================
 def get_live_matches():
     url = "https://cricbuzz-cricket.p.rapidapi.com/matches/v1/live"
-    return requests.get(url, headers=headers).json()
-
-
-def get_match_ids(data):
-    ids = []
-
-    for t in data.get("typeMatches", []):
-        for s in t.get("seriesMatches", []):
-            if "seriesAdWrapper" in s:
-                for m in s["seriesAdWrapper"]["matches"]:
-                    ids.append(m["matchInfo"]["matchId"])
-
-    return ids  # ALL matches (IPL + others)
-
-
-def get_commentary(mid):
     try:
-        url = f"https://cricbuzz-cricket.p.rapidapi.com/matches/v1/commentary/{mid}"
-        return requests.get(url, headers=headers, timeout=10).json()
+        r = requests.get(url, headers=headers, timeout=10)
+        return r.json()
     except:
         return None
 
-
-def is_sent(eid):
-    cur.execute("SELECT 1 FROM sent WHERE id=?", (eid,))
-    return cur.fetchone() is not None
-
-
-def mark(eid):
-    cur.execute("INSERT OR IGNORE INTO sent (id) VALUES (?)", (eid,))
-    conn.commit()
-
-
-def parse(data):
-    events = []
+# ================= SAFE PARSER =================
+def parse_live_scores(data):
+    messages = []
 
     if not data:
-        return events
+        return messages
 
-    for c in data.get("commentary", []):
-        text = c.get("commText", "")
-        over = c.get("overNum", "")
-        ball = c.get("ballNum", "")
+    try:
+        for t in data.get("typeMatches", []):
+            for s in t.get("seriesMatches", []):
+                if "seriesAdWrapper" in s:
 
-        if text:
-            eid = f"{over}-{ball}-{text}"
-            events.append((eid, text))
+                    for m in s["seriesAdWrapper"]["matches"]:
 
-    return events
+                        info = m.get("matchInfo", {})
+                        score = m.get("matchScore", {})
 
+                        team1 = info.get("team1", {}).get("teamName", "")
+                        team2 = info.get("team2", {}).get("teamName", "")
 
-send("🏏 GLOBAL BALL-BY-BALL BOT STARTED (IPL + ALL MATCHES) 🚀")
+                        status = info.get("status", "LIVE")
+
+                        match_id = str(info.get("matchId"))
+
+                        msg = f"🏏 {team1} vs {team2}\n"
+                        msg += f"📊 {status}\n"
+
+                        messages.append((match_id, msg))
+
+    except Exception as e:
+        print("parse error:", e)
+
+    return messages
+
+# ================= DUPLICATE CHECK =================
+def already_sent(mid):
+    cur.execute("SELECT 1 FROM sent WHERE id=?", (mid,))
+    return cur.fetchone() is not None
+
+def mark_sent(mid):
+    cur.execute("INSERT OR IGNORE INTO sent (id) VALUES (?)", (mid,))
+    conn.commit()
+
+# ================= START BOT =================
+send_message("🏏 LIVE CRICKET BOT STARTED (STABLE MODE) 🚀")
 
 while True:
 
     try:
-        live = get_live_matches()
+        data = get_live_matches()
+        matches = parse_live_scores(data)
 
-        match_ids = get_match_ids(live)
+        for mid, msg in matches:
 
-        for mid in match_ids:
+            if not already_sent(mid):
 
-            comm = get_commentary(mid)
-            balls = parse(comm)
+                mark_sent(mid)
 
-            for eid, text in balls:
+                send_message(msg)
 
-                if not is_sent(eid):
-
-                    mark(eid)
-
-                    send(f"🏏 BALL UPDATE\n\n{text}")
-
-        time.sleep(10)
+        time.sleep(15)
 
     except Exception as e:
-        print(e)
-        time.sleep(15)
+        print("error:", e)
+        time.sleep(10)
